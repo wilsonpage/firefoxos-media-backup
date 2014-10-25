@@ -1,3 +1,17 @@
+define(function(require, exports, module) {
+'use strict';
+
+/**
+ * Dependencies
+ */
+
+var dropbox = require('services/dropbox/dropbox');
+var debug = require('debug')('app');
+
+/**
+ * Locals
+ */
+
 var pictures = navigator.getDeviceStorage('pictures');
 
 pictures.addEventListener('change', onChange);
@@ -6,24 +20,13 @@ function onChange(e) {
   if (e.reason === 'created') { onCreated(e); }
 }
 
-
 function onCreated(e) {
+  debug('picture created: %s', e.path);
   pictures.get(e.path).then(function(file) {
-    console.log(file);
-    var image = document.createElement('img');
-    image.src = URL.createObjectURL(file);
-    document.body.appendChild(image);
     window.dropbox.upload(file);
   });
 }
 
-function toArrayBuffer(file, done) {
-  var reader = new FileReader();
-  reader.readAsArrayBuffer(file);
-  reader.onload = function() {
-    console.log(reader.result);
-    done(reader.result);
-  };
-}
-
 dropbox.init('dropbox');
+
+});
