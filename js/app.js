@@ -25,3 +25,5 @@ function toArrayBuffer(file, done) {
     done(reader.result);
   };
 }
+
+dropbox.init('dropbox');

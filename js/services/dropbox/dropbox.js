@@ -2,9 +2,60 @@
 
 (function(exports) {
 
-  var access_token = '1IYGUISlje0AAAAAAAA1Y-r8y_V0D7cFAVTpCzX4XgSniAo75OD2DUJ1VQC2rWom';
+  var actionButton;
+  var access_token = null;
+  var clientId = 'dbkxce5hlr38ryn';
+
+  function init(elementId) {
+    actionButton = document.getElementById(elementId);
+    if (!actionButton) {
+      console.error('Cannot find dropbox button');
+      return;
+    }
+
+    actionButton.addEventListener('click', handleAction);
+    access_token = localStorage.dropboxToken;
+
+    updateUI();
+  }
+
+  function updateUI() {
+    actionButton.textContent = access_token === null ? 'Login to Dropbox' :
+     'Logout from Dropbox';
+  }
+
+  function handleAction(evt) {
+    if (access_token) {
+      logout();
+    } else {
+      login();
+    }
+  }
+
+  function logout() {
+    access_token = null;
+    delete localStorage.dropboxToken;
+
+    updateUI();
+  }
+
+  function login() {
+    var url = 'https://www.dropbox.com/1/oauth2/authorize?response_type=token&redirect_uri=http://localhost/firefoxos-media-uploader&client_id=' + clientId;
+    var dpWindow = window.open(url);
+    var timer = window.setInterval(function() {
+      if (dpWindow.closed) {
+        access_token = localStorage.dropboxToken;
+        clearInterval(timer);
+        updateUI();
+      }
+    }, 500);
+  }
 
   function upload(file) {
+    if (!access_token) {
+      return;
+    }
+
     var reader = new FileReader();
 
     toArrayBuffer(file, function(data) {
@@ -32,6 +83,7 @@
   }
 
   window.dropbox = {
+    init: init,
     upload: upload
   };
 })(window);
