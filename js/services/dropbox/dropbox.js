@@ -15,6 +15,7 @@ var clientId = 'dbkxce5hlr38ryn';
 var access_token = null;
 var actionButton;
 
+
 function init(elementId) {
   actionButton = document.getElementById(elementId);
   if (!actionButton) {
@@ -54,7 +55,7 @@ function login() {
   var dpWindow = window.open(url);
   var timer = window.setInterval(function() {
     debug('window closed check');
-    if (dpWindow.closed) {
+    if (dpWindow && dpWindow.closed) {
       debug('window was closed');
       access_token = localStorage.dropboxToken;
       clearInterval(timer);
@@ -95,7 +96,6 @@ function upload(file) {
     };
   });
 }
-
 
 function toArrayBuffer(file, done) {
   var reader = new FileReader();
