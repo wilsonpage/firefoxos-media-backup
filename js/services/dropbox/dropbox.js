@@ -14,7 +14,7 @@
     }
 
     actionButton.addEventListener('click', handleAction);
-    access_token = localStorage.dropboxToken;
+    access_token = localStorage.dropboxToken || null;
 
     updateUI();
   }
@@ -43,7 +43,7 @@
     var url = 'https://www.dropbox.com/1/oauth2/authorize?response_type=token&redirect_uri=http://localhost/firefoxos-media-uploader&client_id=' + clientId;
     var dpWindow = window.open(url);
     var timer = window.setInterval(function() {
-      if (dpWindow.closed) {
+      if (dpWindow && dpWindow.closed) {
         access_token = localStorage.dropboxToken;
         clearInterval(timer);
         updateUI();
