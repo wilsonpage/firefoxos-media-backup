@@ -23,7 +23,7 @@ function onChange(e) {
 function onCreated(e) {
   debug('picture created: %s', e.path);
   pictures.get(e.path).then(function(file) {
-    window.dropbox.upload(file);
+    dropbox.upload(file);
   });
 }
 

@@ -25,14 +25,12 @@ function init(elementId) {
 
   actionButton.addEventListener('click', handleAction);
   access_token = localStorage.dropboxToken;
-
   updateUI();
 }
 
 function updateUI() {
-  actionButton.textContent = access_token === null ? 'Login to Dropbox' :
-   'Logout from Dropbox';
-  debug('button updated: %s', actionButton.textContent);
+  actionButton.textContent = access_token ? 'Logout from Dropbox' : 'Login to Dropbox';
+  debug('button updated: %s', actionButton.textContent, access_token ? 1 : 0);
 }
 
 function handleAction(evt) {
@@ -51,7 +49,7 @@ function logout() {
 }
 
 function login() {
-  var url = 'https://www.dropbox.com/1/oauth2/authorize?response_type=token&redirect_uri=http://localhost/firefoxos-media-uploader&client_id=' + clientId;
+  var url = 'https://www.dropbox.com/1/oauth2/authorize?response_type=token&redirect_uri=http://localhost/firefoxos-media-uploader&client_id=' + clientId + '&state=' + Date.now();
   var dpWindow = window.open(url);
   var timer = window.setInterval(function() {
     debug('window closed check');
@@ -63,7 +61,7 @@ function login() {
     }
   }, 500);
 
-  debug('login window opened');
+  debug('login window opened: %s', url);
 }
 
 function upload(file) {
@@ -83,7 +81,7 @@ function upload(file) {
 
     request.upload.onprogress = function(e) {
       if (e.lengthComputable) {
-        console.log((e.loaded / e.total) * 100);
+        debug('upload progress: %s', (e.loaded / e.total) * 100);
       }
     };
 
