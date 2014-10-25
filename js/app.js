@@ -27,6 +27,6 @@ function onCreated(e) {
   });
 }
 
-dropbox.init('dropbox');
+dropbox.startUI('dropbox');
 
 });

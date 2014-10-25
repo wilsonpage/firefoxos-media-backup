@@ -13,18 +13,27 @@ var debug = require('debug')('service:dropbox');
 
 var clientId = 'dbkxce5hlr38ryn';
 var access_token = null;
-var actionButton;
+var actionButton = null;
 
+function init() {
+  access_token = localStorage.dropboxToken;
+}
 
-function init(elementId) {
+function startUI(elementId) {
+  if (actionButton !== null) {
+    // UI already initialized
+    return;
+  }
+
   actionButton = document.getElementById(elementId);
   if (!actionButton) {
     console.error('Cannot find dropbox button');
     return;
   }
 
-  actionButton.addEventListener('click', handleAction);
-  access_token = localStorage.dropboxToken;
+  init();
+
+  actionButton.addEventListener('click', handleAction);  
   updateUI();
 }
 
@@ -55,7 +64,7 @@ function login() {
     debug('window closed check');
     if (dpWindow && dpWindow.closed) {
       debug('window was closed');
-      access_token = localStorage.dropboxToken;
+      init();
       clearInterval(timer);
       updateUI();
     }
@@ -106,6 +115,7 @@ function toArrayBuffer(file, done) {
 
 module.exports = {
   init: init,
+  startUI: startUI,
   upload: upload
 };
 
