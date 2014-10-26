@@ -109,17 +109,15 @@ App.prototype.processJobs = function() {
 
     var last = Promise.resolve();
     var self = this;
-    var job;
 
-    while (this.queue.length) {
-      job = this.queue.shift();
+    this.queue.forEach(function() {
+      var job = self.queue.shift();
       last = last.then(function() {
         return self.executeJob(job);
       });
-    }
+    });
 
     return last;
-  // });
 };
 
 App.prototype.notify = function(file) {

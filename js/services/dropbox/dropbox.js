@@ -20,6 +20,7 @@ var clientId = 'dbkxce5hlr38ryn';
 module.exports = Dropbox;
 
 function Dropbox() {
+  this.upload = this.upload.bind(this);
   this.setupUI();
 }
 
@@ -95,7 +96,7 @@ Dropbox.prototype.upload = function(file) {
       var path = 'Camera Uploads/' + Date.now() + '.jpg';
 
       request.open('PUT', 'https://api-content.dropbox.com/1/files_put/auto/' + encodeURI(path));
-      request.setRequestHeader('Authorization', 'Bearer ' + access_token);
+      request.setRequestHeader('Authorization', 'Bearer ' + this.getToken());
       request.send(data);
       debug('request opened');
 
@@ -114,7 +115,7 @@ Dropbox.prototype.upload = function(file) {
         debug('request errored');
         reject('error', e);
       };
-    });
+    }.bind(this));
   }.bind(this));
 };
 
