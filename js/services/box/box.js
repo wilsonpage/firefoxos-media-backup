@@ -11,60 +11,54 @@ var debug = require('debug')('service:box');
  * Locals
  */
 
-var clientId = 'dbkxce5hlr38ryn';
+var clientId = 'd6yiir9yqxx2s5spbcxpsjyiogfoy9bv';
+var access_token = null;
+var actionButton = null;
 
-/**
- * Exports
- */
-
-module.exports = Box;
-
-function Box() {
-  // this.setupUI();
+function init() {
+  access_token = localStorage.box ? JSON.parse(localStorage.box).access_token : null;
 }
 
-Box.prototype.name = 'Box';
+function startUI(elementId) {
+  if (actionButton !== null) {
+    // UI already initialized
+    return;
+  }
 
-Box.prototype.loggedIn = function() {
-  return !!this.getToken();
-};
+  actionButton = document.getElementById(elementId);
+  if (!actionButton) {
+    console.error('Cannot find box button');
+    return;
+  }
 
-Box.prototype.getToken = function() {
-  return localStorage.dropboxToken;
-};
+  init();
 
-Box.prototype.setToken = function(token) {
-  localStorage.dropboxToken = token;
-  debug('token set: %s', token);
-};
+  actionButton.addEventListener('click', handleAction);  
+  updateUI();
+}
 
-Box.prototype.setupUI = function() {
-  this.button = document.getElementById('Box');
-  if (!this.button) return console.error('Cannot find Box button');
-  this.button.addEventListener('click', this.onButtonClick);
-  this.updateUI();
-  debug('UI setup');
-};
+function updateUI() {
+  actionButton.textContent = access_token ? 'Logout from Box' : 'Login to Box';
+  debug('button updated: %s', actionButton.textContent, access_token ? 1 : 0);
+}
 
-Box.prototype.updateUI = function() {
-  if (!this.button) return;
+function handleAction(evt) {
+  if (access_token) {
+    logout();
+  } else {
+    login();
+  }
+}
 
-  var text = this.loggedIn()
-    ? 'Logout from Box'
-    : 'Login to Box';
+function logout() {
+  access_token = null;
+  delete localStorage.box;
 
-  this.button.textContent = text;
-  debug('button updated: %s', text);
-};
+  updateUI();
+}
 
-Box.prototype.onButtonClick = function() {
-  debug('button click');
-  if (this.loggedIn()) this.logout();
-  else this.login();
-};
-
-Box.prototype.login  =function() {
-  var url = 'https://www.Box.com/1/oauth2/authorize?response_type=token&redirect_uri=http://localhost/firefoxos-media-uploader&client_id=' + clientId + '&state=' + Date.now();
+function login() {
+  var url = 'https://api.box.com/oauth2/authorize?response_type=code&redirect_uri=http://localhost/box&client_id=' + clientId + '&state=' + Date.now();
   var dpWindow = window.open(url);
   var timer = window.setInterval(function() {
     debug('window closed check');
@@ -77,23 +71,49 @@ Box.prototype.login  =function() {
   }, 500);
 
   debug('login window opened: %s', url);
-};
-
-Box.prototype.logout = function() {
-  delete localStorage.dropboxToken;
-  this.updateUI();
-};
-
-Box.prototype.upload = function(file) {
-  return new Promise(function(resolve, reject) {
-    setTimeout(resolve, 500);
-  });
-};
-
-function toArrayBuffer(file, done) {
-  var reader = new FileReader();
-  reader.readAsArrayBuffer(file);
-  reader.onload = function() { done(reader.result); };
 }
+
+function upload(file) {
+  if (!access_token) {
+    return;
+  }
+
+  var request = new XMLHttpRequest({ mozSystem: true });
+  var path = Date.now() + '.jpg';
+
+  var formData = new FormData();
+  formData.append('file', file, path);
+  formData.append('attributes', JSON.stringify({
+    'name': path,
+    'parent': {
+      'id': '0'
+    }
+  }));
+
+  request.open('POST', 'https://upload.box.com/api/2.0/files/content');
+  request.setRequestHeader('Authorization', 'Bearer ' + access_token);
+  request.send(formData);
+
+  request.upload.onprogress = function(e) {
+    if (e.lengthComputable) {
+      debug('upload progress: %s', (e.loaded / e.total) * 100);
+    }
+  };
+
+  request.onload = function(e) {
+    console.log('load', e);
+  };
+
+  request.onerror = function(e) {
+    console.log('error', e);
+  };
+}
+
+
+module.exports = {
+  init: init,
+  startUI: startUI,
+  upload: upload
+};
 
 });
