@@ -44,7 +44,6 @@ function handleAction(evt) {
 function logout() {
   access_token = null;
   delete localStorage.dropboxToken;
-
   updateUI();
 }
 
@@ -65,33 +64,33 @@ function login() {
 }
 
 function upload(file) {
-  if (!access_token) {
-    return;
-  }
+  return new Promise(function(resolve, reject) {
+    if (!access_token) return reject('not logged in');
 
-  var reader = new FileReader();
+    toArrayBuffer(file, function(data) {
+      var request = new XMLHttpRequest({ mozSystem: true });
+      var path = 'Camera Uploads/' + Date.now() + '.jpg';
 
-  toArrayBuffer(file, function(data) {
-    var request = new XMLHttpRequest({ mozSystem: true });
-    var path = 'Camera Uploads/' + Date.now() + '.jpg';
+      request.open('PUT', 'https://api-content.dropbox.com/1/files_put/auto/' + encodeURI(path));
+      request.setRequestHeader('Authorization', 'Bearer ' + access_token);
+      request.send(data);
 
-    request.open('PUT', 'https://api-content.dropbox.com/1/files_put/auto/' + encodeURI(path));
-    request.setRequestHeader('Authorization', 'Bearer ' + access_token);
-    request.send(data);
+      request.upload.onprogress = function(e) {
+        if (e.lengthComputable) {
+          debug('upload progress: %s', (e.loaded / e.total) * 100);
+        }
+      };
 
-    request.upload.onprogress = function(e) {
-      if (e.lengthComputable) {
-        debug('upload progress: %s', (e.loaded / e.total) * 100);
-      }
-    };
+      request.onload = function(e) {
+        debug('request done');
+        resolve(file);
+      };
 
-    request.onload = function(e) {
-      console.log('load', e);
-    };
-
-    request.onerror = function(e) {
-      console.log('error', e);
-    };
+      request.onerror = function(e) {
+        debug('request errored');
+        reject('error', e);
+      };
+    });
   });
 }
 

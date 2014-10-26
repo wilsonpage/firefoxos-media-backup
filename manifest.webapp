@@ -15,10 +15,9 @@
   },
   "type": "privileged",
   "permissions": {
-    "systemXHR": {
-      "description": "Required to load remote content"
-    },
-    "device-storage:pictures":{ "access": "readwrite" }
+    "systemXHR": { "description": "Required to load remote content" },
+    "device-storage:pictures": { "access": "readwrite" },
+    "desktop-notification": {}
   },
   "redirects": [
     {"from": "http://localhost/firefoxos-media-uploader",

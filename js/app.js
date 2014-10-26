@@ -23,8 +23,15 @@ function onChange(e) {
 function onCreated(e) {
   debug('picture created: %s', e.path);
   pictures.get(e.path).then(function(file) {
-    dropbox.upload(file);
+    dropbox.upload(file).then(notify);
   });
+}
+
+function notify(file) {
+  var mbs = file.size / (1024 * 1024);
+  var body = mbs.toFixed(2) + 'MB';
+  var notification = new Notification('File uploaded', { body: body });
+  debug('notify', notification);
 }
 
 dropbox.init('dropbox');
