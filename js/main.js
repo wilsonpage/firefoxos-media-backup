@@ -7,4 +7,6 @@ requirejs.config({
   }
 });
 
-require(['app']);
+require(['app'], function(App) {
+  window.app = new App();
+});

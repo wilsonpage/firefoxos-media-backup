@@ -12,51 +12,58 @@ var debug = require('debug')('service:dropbox');
  */
 
 var clientId = 'dbkxce5hlr38ryn';
-var access_token = null;
-var actionButton = null;
 
-function init() {
-  access_token = localStorage.dropboxToken;
+/**
+ * Exports
+ */
+
+module.exports = Dropbox;
+
+function Dropbox() {
+  this.setupUI();
 }
 
-function startUI(elementId) {
-  if (actionButton !== null) {
-    // UI already initialized
-    return;
-  }
+Dropbox.prototype.name = 'Dropbox';
 
-  actionButton = document.getElementById(elementId);
-  if (!actionButton) {
-    console.error('Cannot find dropbox button');
-    return;
-  }
+Dropbox.prototype.loggedIn = function() {
+  return !!this.getToken();
+};
 
-  init();
+Dropbox.prototype.getToken = function() {
+  return localStorage.dropboxToken;
+};
 
-  actionButton.addEventListener('click', handleAction);  
-  updateUI();
-}
+Dropbox.prototype.setToken = function(token) {
+  localStorage.dropboxToken = token;
+  debug('token set: %s', token);
+};
 
-function updateUI() {
-  actionButton.textContent = access_token ? 'Logout from Dropbox' : 'Login to Dropbox';
-  debug('button updated: %s', actionButton.textContent, access_token ? 1 : 0);
-}
+Dropbox.prototype.setupUI = function() {
+  this.button = document.getElementById('dropbox');
+  if (!this.button) return console.error('Cannot find dropbox button');
+  this.button.addEventListener('click', this.onButtonClick);
+  this.updateUI();
+  debug('UI setup');
+};
 
-function handleAction(evt) {
-  if (access_token) {
-    logout();
-  } else {
-    login();
-  }
-}
+Dropbox.prototype.updateUI = function() {
+  if (!this.button) return;
 
-function logout() {
-  access_token = null;
-  delete localStorage.dropboxToken;
-  updateUI();
-}
+  var text = this.loggedIn()
+    ? 'Logout from Dropbox'
+    : 'Login to Dropbox';
 
-function login() {
+  this.button.textContent = text;
+  debug('button updated: %s', text);
+};
+
+Dropbox.prototype.onButtonClick = function() {
+  debug('button click');
+  if (this.loggedIn()) this.logout();
+  else this.login();
+};
+
+Dropbox.prototype.login  =function() {
   var url = 'https://www.dropbox.com/1/oauth2/authorize?response_type=token&redirect_uri=http://localhost/firefoxos-media-uploader&client_id=' + clientId + '&state=' + Date.now();
   var dpWindow = window.open(url);
   var timer = window.setInterval(function() {
@@ -70,11 +77,18 @@ function login() {
   }, 500);
 
   debug('login window opened: %s', url);
-}
+};
 
-function upload(file) {
+Dropbox.prototype.logout = function() {
+  delete localStorage.dropboxToken;
+  this.updateUI();
+};
+
+Dropbox.prototype.upload = function(file) {
   return new Promise(function(resolve, reject) {
-    if (!access_token) return reject('not logged in');
+    debug('upload');
+
+    if (!this.loggedIn()) return reject('not logged in');
 
     toArrayBuffer(file, function(data) {
       var request = new XMLHttpRequest({ mozSystem: true });
@@ -83,6 +97,7 @@ function upload(file) {
       request.open('PUT', 'https://api-content.dropbox.com/1/files_put/auto/' + encodeURI(path));
       request.setRequestHeader('Authorization', 'Bearer ' + access_token);
       request.send(data);
+      debug('request opened');
 
       request.upload.onprogress = function(e) {
         if (e.lengthComputable) {
@@ -100,22 +115,13 @@ function upload(file) {
         reject('error', e);
       };
     });
-  });
-}
+  }.bind(this));
+};
 
 function toArrayBuffer(file, done) {
   var reader = new FileReader();
   reader.readAsArrayBuffer(file);
-  reader.onload = function() {
-    console.log(reader.result);
-    done(reader.result);
-  };
+  reader.onload = function() { done(reader.result); };
 }
-
-module.exports = {
-  init: init,
-  startUI: startUI,
-  upload: upload
-};
 
 });
