@@ -20,7 +20,6 @@ var clientId = 'dbkxce5hlr38ryn';
 module.exports = Dropbox;
 
 function Dropbox() {
-  this.upload = this.upload.bind(this);
   this.setupUI();
 }
 
@@ -42,7 +41,7 @@ Dropbox.prototype.setToken = function(token) {
 Dropbox.prototype.setupUI = function() {
   this.button = document.getElementById('dropbox');
   if (!this.button) return console.error('Cannot find dropbox button');
-  this.button.addEventListener('click', this.onButtonClick);
+  this.button.addEventListener('click', this.onButtonClick.bind(this));
   this.updateUI();
   debug('UI setup');
 };
@@ -67,15 +66,14 @@ Dropbox.prototype.onButtonClick = function() {
 Dropbox.prototype.login  =function() {
   var url = 'https://www.dropbox.com/1/oauth2/authorize?response_type=token&redirect_uri=http://localhost/firefoxos-media-uploader&client_id=' + clientId + '&state=' + Date.now();
   var dpWindow = window.open(url);
-  var timer = window.setInterval(function() {
+  var timer = window.setInterval((function() {
     debug('window closed check');
     if (dpWindow && dpWindow.closed) {
       debug('window was closed');
-      init();
       clearInterval(timer);
-      updateUI();
+      this.updateUI();
     }
-  }, 500);
+  }).bind(this), 500);
 
   debug('login window opened: %s', url);
 };

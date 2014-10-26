@@ -12,108 +12,125 @@ var debug = require('debug')('service:box');
  */
 
 var clientId = 'd6yiir9yqxx2s5spbcxpsjyiogfoy9bv';
-var access_token = null;
-var actionButton = null;
 
-function init() {
-  access_token = localStorage.box ? JSON.parse(localStorage.box).access_token : null;
+module.exports = Box;
+
+function Box() {
+  this.setupUI();
 }
 
-function startUI(elementId) {
-  if (actionButton !== null) {
+Box.prototype.loggedIn = function() {
+  debug('Am I logged in %s', !!this.getToken());
+  return !!this.getToken();
+};
+
+Box.prototype.getToken = function() {
+  var token = localStorage.box ?
+   JSON.parse(localStorage.box).access_token :
+   null;
+  debug('Token is %s', token);
+  this.access_token = token;
+
+  return token;
+};
+
+Box.prototype.name = 'Box';
+
+Box.prototype.setupUI = function() {
+  if (this.button) {
     // UI already initialized
     return;
   }
 
-  actionButton = document.getElementById(elementId);
-  if (!actionButton) {
+  this.button = document.getElementById('box');
+  if (!this.button) {
     console.error('Cannot find box button');
     return;
   }
 
-  init();
+  this.getToken();
 
-  actionButton.addEventListener('click', handleAction);  
-  updateUI();
+  this.button.addEventListener('click', handleAction.bind(null, this));  
+  this.updateUI();
 }
 
-function updateUI() {
-  actionButton.textContent = access_token ? 'Logout from Box' : 'Login to Box';
-  debug('button updated: %s', actionButton.textContent, access_token ? 1 : 0);
+Box.prototype.updateUI = function() {
+  this.button.textContent = this.loggedIn() ?
+   'Logout from Box' :
+   'Login to Box';
+
+  debug('button updated: %s', this.button.textContent, this.loggedIn());
 }
 
-function handleAction(evt) {
-  if (access_token) {
-    logout();
+function handleAction(obj) {
+  if (obj.loggedIn()) {
+    obj.logout();
   } else {
-    login();
+    obj.login();
   }
 }
 
-function logout() {
-  access_token = null;
+Box.prototype.logout = function() {
+  this.access_token = null;
   delete localStorage.box;
 
-  updateUI();
+  this.updateUI();
 }
 
-function login() {
+Box.prototype.login = function() {
   var url = 'https://api.box.com/oauth2/authorize?response_type=code&redirect_uri=http://localhost/box&client_id=' + clientId + '&state=' + Date.now();
   var dpWindow = window.open(url);
-  var timer = window.setInterval(function() {
+  var timer = window.setInterval((function() {
     debug('window closed check');
     if (dpWindow && dpWindow.closed) {
       debug('window was closed');
-      init();
       clearInterval(timer);
-      updateUI();
+      this.updateUI();
     }
-  }, 500);
+  }).bind(this), 500);
 
   debug('login window opened: %s', url);
 }
 
-function upload(file) {
-  if (!access_token) {
-    return;
-  }
-
-  var request = new XMLHttpRequest({ mozSystem: true });
-  var path = Date.now() + '.jpg';
-
-  var formData = new FormData();
-  formData.append('file', file, path);
-  formData.append('attributes', JSON.stringify({
-    'name': path,
-    'parent': {
-      'id': '0'
+Box.prototype.upload = function(file) {
+  return new Promise((function(resolve, reject) {
+    if (!this.getToken()) {
+      return Promise.reject('not logged in box');
     }
-  }));
+    debug('Uploading to box');
 
-  request.open('POST', 'https://upload.box.com/api/2.0/files/content');
-  request.setRequestHeader('Authorization', 'Bearer ' + access_token);
-  request.send(formData);
+    var request = new XMLHttpRequest({ mozSystem: true });
+    var path = Date.now() + '.jpg';
 
-  request.upload.onprogress = function(e) {
-    if (e.lengthComputable) {
-      debug('upload progress: %s', (e.loaded / e.total) * 100);
-    }
-  };
+    var formData = new FormData();
+    formData.append('file', file, path);
+    formData.append('attributes', JSON.stringify({
+      'name': path,
+      'parent': {
+        'id': '0'
+      }
+    }));
 
-  request.onload = function(e) {
-    console.log('load', e);
-  };
+    request.open('POST', 'https://upload.box.com/api/2.0/files/content');
+    request.setRequestHeader('Authorization', 'Bearer ' + this.getToken());
+    request.send(formData);
 
-  request.onerror = function(e) {
-    console.log('error', e);
-  };
+    request.upload.onprogress = function(e) {
+      if (e.lengthComputable) {
+        debug('upload progress: %s', (e.loaded / e.total) * 100);
+      }
+    };
+
+    request.onload = function(e) {
+      debug('Upload to box ok');
+      resolve();
+    };
+
+    request.onerror = function(e) {
+      debug('Upload to box ko: %s', e.message);
+      reject(e);
+    };
+  }).bind(this));
 }
-
-
-module.exports = {
-  init: init,
-  startUI: startUI,
-  upload: upload
-};
 
 });

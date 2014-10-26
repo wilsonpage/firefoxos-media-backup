@@ -35,6 +35,7 @@ function App() {
 App.prototype.setupServices = function() {
   var self = this;
   services.forEach(function(Service) {
+    debug('Setting up service %s', Service.prototype.name);
     var service = new Service();
     this.services[service.name] = service;
   }, this);
@@ -69,14 +70,14 @@ App.prototype.executeJob = function(job) {
 
     debug('executing job: %s', name);
     this.storage.pictures.get(job.filepath)
-      .then(service.upload)
+      .then(service.upload.bind(service))
       .then(function() {
         debug('succeed to %s', name);
         resolve(job);
       })
 
-      .catch(function() {
-        debug('failed to %s', name);
+      .catch(function(e) {
+        debug('failed to %s: %s', name, e);
         self.failed.push(job);
         resolve(job);
       });
