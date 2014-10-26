@@ -16,7 +16,7 @@
   "type": "privileged",
   "permissions": {
     "systemXHR": { "description": "Required to load remote content" },
-    "device-storage:pictures": { "access": "readwrite" },
+    "device-storage:pictures": { "access": "readonly" },
     "desktop-notification": {}
   },
   "redirects": [
