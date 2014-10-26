@@ -29,7 +29,8 @@ function App() {
   this.failed = [];
 
   this.queueNewPictures()
-    .then(this.flushQueue);
+    .then(this.flushQueue)
+    .catch(debug);
 }
 
 App.prototype.setupServices = function() {
@@ -44,11 +45,8 @@ App.prototype.setupServices = function() {
 App.prototype.onPictureChange = function(e) {
   if (e.reason !== 'created') return;
   debug('picture created: %s', e.path);
-
   this.addFile(e.path);
-  this.flushQueue().then(function() {
-    debug('on picture change done');
-  });
+  this.flushQueue().catch(debug);
 };
 
 App.prototype.addFile = function(param) {
@@ -71,44 +69,53 @@ App.prototype.executeJob = function(job) {
     debug('executing job: %s', name);
     this.storage.pictures.get(job.filepath)
       .then(service.upload.bind(service))
-      .then(function() {
+      .then(function(file) {
         debug('succeed to %s', name);
+        job.file = file;
         resolve(job);
       })
 
-      .catch(function(e) {
-        debug('failed to %s: %s', name, e);
-        self.failed.push(job);
+      .catch(function(err) {
+        debug('failed to %s: %s', name, err);
+        if (err === 'xhr') self.failed.push(job);
         resolve(job);
       });
   }.bind(this));
 };
 
+App.prototype.online = function() {
+  return navigator.onLine;
+};
+
 App.prototype.flushQueue = function() {
-  if (this.flushing) return;
-  debug('flushing %s jobs', this.queue.length);
+  return new Promise(function(resolve, reject) {
+    if (this.flushing) return reject('flush in progress');
+    if (!this.online()) return reject('not online');
 
-  this.flushing = true;
-  var self = this;
+    debug('flushing %s jobs', this.queue.length);
 
-  return this.processJobs()
-    .then(function() {
-      debug('queue flushed');
-      complete();
-    });
+    this.flushing = true;
+    var length = this.queue.length;
+    var self = this;
 
-  function complete() {
-    self.flushing = false;
-  }
+    this.processJobs()
+      .then(function(successful) {
+        debug('queue flushed', successful);
+        self.flushing = false;
+        self.notify(successful);
+        self.setLastSync(Date.now());
+        resolve();
+      });
+  }.bind(this));
 };
 
 App.prototype.queueNewPictures = function() {
   var lastSync = this.getLastSync();
   var self = this;
+
   return getNewPictures(lastSync).then(function(files) {
     debug('got new pictures', files);
     files.forEach(self.addFile);
-    self.setLastSync(Date.now());
   });
 };
 
@@ -117,30 +124,46 @@ App.prototype.getLastSync = function() {
 };
 
 App.prototype.setLastSync = function(value) {
+  debug('set last sync: value', value);
   localStorage.lastSync = value;
 };
 
 App.prototype.processJobs = function() {
-  debug('process %s jobs', this.queue.length);
-  var queue = this.queue;
-  var self = this;
+  return new Promise(function(resolve, reject) {
+    debug('process %s jobs', this.queue.length);
 
-  return queue.reduce(function(last, job, i) {
-    return last.then(function() {
-      return self.executeJob(job)
-        .then(self.removeJob);
+    var queue = this.queue;
+    var successful = [];
+    var self = this;
+    var files = {};
+
+    queue.reduce(function(last, job, i) {
+      return last.then(function() {
+        return self.executeJob(job).then(function() {
+          if (!files[job.filepath]) {
+            files[job.filepath] = true;
+            successful.push(job);
+          }
+        });
+      });
+    }, Promise.resolve()).then(function() {
+      resolve(successful);
     });
-  }, Promise.resolve());
+  }.bind(this));
 };
 
 App.prototype.removeJob = function(job) {
   this.queue.splice(this.queue.indexOf(job), 1);
 };
 
-App.prototype.notify = function(file) {
-  var mbs = file.size / (1024 * 1024);
+App.prototype.notify = function(jobs) {
+  var length = jobs && jobs.length;
+  if (!length) return;
+  var files = 'File' + (length > 1 ? 's' : '');
+  var size = jobs.reduce(function(prev, job) { return prev + job.file.size; }, 0);
+  var mbs = size / (1024 * 1024);
   var body = mbs.toFixed(2) + 'MB';
-  var notification = new Notification('File uploaded', { body: body });
+  var notification = new Notification(length + ' ' + files +  ' uploaded', { body: body });
   debug('notify', notification);
 };
 

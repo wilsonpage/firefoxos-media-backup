@@ -6,7 +6,8 @@ var picture = navigator.getDeviceStorage('pictures');
 
 module.exports = function(since, done) {
   return new Promise(function(resolve, reject) {
-    since = since || 0;
+    debug('get pictures since: %s', since);
+    since = Number(since || 0);
 
     var cursor = picture.enumerate();
     var files = [];
@@ -14,9 +15,11 @@ module.exports = function(since, done) {
     cursor.onsuccess = function () {
       if (this.done) return resolve(files);
       var file = this.result;
-      var isNew = file.lastModified > since;
+      var isNew = Number(file.lastModified) > since;
+      debug(Number(file.lastModified) - since);
       var shouldSync = isNew && !hidden(file);
       if (shouldSync) files.push(file);
+      debug('file: %s, isNew: %s, shouldSync: %s', file.name, isNew, shouldSync, file.lastModified);
       this.continue();
     };
 

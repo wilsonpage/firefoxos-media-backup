@@ -95,7 +95,7 @@ Box.prototype.login = function() {
 Box.prototype.upload = function(file) {
   return new Promise((function(resolve, reject) {
     if (!this.getToken()) {
-      return Promise.reject('not logged in box');
+      return reject('not logged in box');
     }
     debug('Uploading to box');
 

@@ -89,7 +89,7 @@ Dropbox.prototype.upload = function(file) {
 
     if (!this.loggedIn()) return reject('not logged in');
 
-    // setTimeout(resolve, 300);
+    // return setTimeout(resolve, 300);
 
     toArrayBuffer(file, function(data) {
       var request = new XMLHttpRequest({ mozSystem: true });
@@ -112,7 +112,7 @@ Dropbox.prototype.upload = function(file) {
       };
 
       request.onerror = function(e) {
-        debug('request errored');
+        debug('request errored', e);
         reject('error', e);
       };
     }.bind(this));
