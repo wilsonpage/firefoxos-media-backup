@@ -87,9 +87,11 @@ Dropbox.prototype.logout = function() {
 
 Dropbox.prototype.upload = function(file) {
   return new Promise(function(resolve, reject) {
-    debug('upload');
+    debug('upload', file);
 
     if (!this.loggedIn()) return reject('not logged in');
+
+    // setTimeout(resolve, 300);
 
     toArrayBuffer(file, function(data) {
       var request = new XMLHttpRequest({ mozSystem: true });
