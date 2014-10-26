@@ -34,6 +34,6 @@ function notify(file) {
   debug('notify', notification);
 }
 
-dropbox.init('dropbox');
+dropbox.startUI('dropbox');
 
 });
