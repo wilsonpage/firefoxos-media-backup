@@ -11,89 +11,126 @@ var debug = require('debug')('service:box');
  * Locals
  */
 
-var clientId = 'dbkxce5hlr38ryn';
-
-/**
- * Exports
- */
+var clientId = 'd6yiir9yqxx2s5spbcxpsjyiogfoy9bv';
 
 module.exports = Box;
 
 function Box() {
-  // this.setupUI();
+  this.setupUI();
 }
 
-Box.prototype.name = 'Box';
-
 Box.prototype.loggedIn = function() {
+  debug('Am I logged in %s', !!this.getToken());
   return !!this.getToken();
 };
 
 Box.prototype.getToken = function() {
-  return localStorage.dropboxToken;
+  var token = localStorage.box ?
+   JSON.parse(localStorage.box).access_token :
+   null;
+  debug('Token is %s', token);
+  this.access_token = token;
+
+  return token;
 };
 
-Box.prototype.setToken = function(token) {
-  localStorage.dropboxToken = token;
-  debug('token set: %s', token);
-};
+Box.prototype.name = 'Box';
 
 Box.prototype.setupUI = function() {
-  this.button = document.getElementById('Box');
-  if (!this.button) return console.error('Cannot find Box button');
-  this.button.addEventListener('click', this.onButtonClick);
+  if (this.button) {
+    // UI already initialized
+    return;
+  }
+
+  this.button = document.getElementById('box');
+  if (!this.button) {
+    console.error('Cannot find box button');
+    return;
+  }
+
+  this.getToken();
+
+  this.button.addEventListener('click', handleAction.bind(null, this));  
   this.updateUI();
-  debug('UI setup');
-};
+}
 
 Box.prototype.updateUI = function() {
-  if (!this.button) return;
+  this.button.textContent = this.loggedIn() ?
+   'Logout from Box' :
+   'Login to Box';
 
-  var text = this.loggedIn()
-    ? 'Logout from Box'
-    : 'Login to Box';
+  debug('button updated: %s', this.button.textContent, this.loggedIn());
+}
 
-  this.button.textContent = text;
-  debug('button updated: %s', text);
-};
+function handleAction(obj) {
+  if (obj.loggedIn()) {
+    obj.logout();
+  } else {
+    obj.login();
+  }
+}
 
-Box.prototype.onButtonClick = function() {
-  debug('button click');
-  if (this.loggedIn()) this.logout();
-  else this.login();
-};
+Box.prototype.logout = function() {
+  this.access_token = null;
+  delete localStorage.box;
 
-Box.prototype.login  =function() {
-  var url = 'https://www.Box.com/1/oauth2/authorize?response_type=token&redirect_uri=http://localhost/firefoxos-media-uploader&client_id=' + clientId + '&state=' + Date.now();
+  this.updateUI();
+}
+
+Box.prototype.login = function() {
+  var url = 'https://api.box.com/oauth2/authorize?response_type=code&redirect_uri=http://localhost/box&client_id=' + clientId + '&state=' + Date.now();
   var dpWindow = window.open(url);
-  var timer = window.setInterval(function() {
+  var timer = window.setInterval((function() {
     debug('window closed check');
     if (dpWindow && dpWindow.closed) {
       debug('window was closed');
-      init();
       clearInterval(timer);
-      updateUI();
+      this.updateUI();
     }
-  }, 500);
+  }).bind(this), 500);
 
   debug('login window opened: %s', url);
-};
-
-Box.prototype.logout = function() {
-  delete localStorage.dropboxToken;
-  this.updateUI();
-};
+}
 
 Box.prototype.upload = function(file) {
-  return new Promise(function(resolve, reject) {
-    setTimeout(resolve, 500);
-  });
-};
+  return new Promise((function(resolve, reject) {
+    if (!this.getToken()) {
+      return Promise.reject('not logged in box');
+    }
+    debug('Uploading to box');
 
-function toArrayBuffer(file, done) {
-  var reader = new FileReader();
-  reader.readAsArrayBuffer(file);
-  reader.onload = function() { done(reader.result); };
+    var request = new XMLHttpRequest({ mozSystem: true });
+    var path = Date.now() + '.jpg';
+
+    var formData = new FormData();
+    formData.append('file', file, path);
+    formData.append('attributes', JSON.stringify({
+      'name': path,
+      'parent': {
+        'id': '0'
+      }
+    }));
+
+    request.open('POST', 'https://upload.box.com/api/2.0/files/content');
+    request.setRequestHeader('Authorization', 'Bearer ' + this.getToken());
+    request.send(formData);
+
+    request.upload.onprogress = function(e) {
+      if (e.lengthComputable) {
+        debug('upload progress: %s', (e.loaded / e.total) * 100);
+      }
+    };
+
+    request.onload = function(e) {
+      debug('Upload to box ok');
+      resolve();
+    };
+
+    request.onerror = function(e) {
+      debug('Upload to box ko: %s', e.message);
+      reject(e);
+    };
+  }).bind(this));
 }
 
 });

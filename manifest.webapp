@@ -21,7 +21,9 @@
   },
   "redirects": [
     {"from": "http://localhost/firefoxos-media-uploader",
-     "to": "/js/services/dropbox/auth.html"}
+     "to": "/js/services/dropbox/auth.html"},
+    {"from": "http://localhost/box",
+     "to": "/js/services/box/auth.html"}
   ],
   "installs_allowed_from": [
     "*"
