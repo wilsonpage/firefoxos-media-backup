@@ -50,9 +50,9 @@ Box.prototype.setupUI = function() {
 
   this.getToken();
 
-  this.button.addEventListener('click', handleAction.bind(null, this));  
+  this.button.addEventListener('click', handleAction.bind(null, this));
   this.updateUI();
-}
+};
 
 Box.prototype.updateUI = function() {
   this.button.textContent = this.loggedIn() ?
@@ -60,7 +60,7 @@ Box.prototype.updateUI = function() {
    'Login to Box';
 
   debug('button updated: %s', this.button.textContent, this.loggedIn());
-}
+};
 
 function handleAction(obj) {
   if (obj.loggedIn()) {
@@ -75,7 +75,7 @@ Box.prototype.logout = function() {
   delete localStorage.box;
 
   this.updateUI();
-}
+};
 
 Box.prototype.login = function() {
   var url = 'https://api.box.com/oauth2/authorize?response_type=code&redirect_uri=http://localhost/box&client_id=' + clientId + '&state=' + Date.now();
@@ -90,7 +90,7 @@ Box.prototype.login = function() {
   }).bind(this), 500);
 
   debug('login window opened: %s', url);
-}
+};
 
 Box.prototype.upload = function(file) {
   return new Promise((function(resolve, reject) {
@@ -131,6 +131,6 @@ Box.prototype.upload = function(file) {
       reject(e);
     };
   }).bind(this));
-}
+};
 
 });
