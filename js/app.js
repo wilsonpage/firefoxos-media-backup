@@ -8,6 +8,28 @@ define(function(require, exports, module) {
 var getNewPictures = require('lib/get-new-pictures');
 var services = require('services/index');
 var debug = require('debug')('app');
+var runEveryMinutes = 6 * 60;
+
+function setupAlarms() {
+  return new Promise(function(resolve, reject) {
+    var req = navigator.mozAlarms.getAll();
+    req.onsuccess = function() {
+      this.result.forEach(function(alarm) {
+        navigator.mozAlarms.remove(alarm);
+      });
+
+      // Each 6 hours
+      var nextTick = new Date(Date.now() + 60000 * runEveryMinutes);
+
+      debug('Setting up alarm for %s', nextTick);
+      var setAlarmReq = navigator.mozAlarms.add(nextTick,
+       'ignoreTimezone', {});
+      setAlarmReq.onsuccess = resolve;
+      setAlarmReq.onerror = reject;
+    };
+    req.onerror = reject;
+  });
+}
 
 /**
  * Locals
@@ -27,6 +49,8 @@ function App() {
   this.setupServices();
   this.queue = [];
   this.failed = [];
+
+  setupAlarms();
 
   this.queueNewPictures()
     .then(this.flushQueue)
@@ -104,6 +128,7 @@ App.prototype.flushQueue = function() {
         self.flushing = false;
         self.notify(successful);
         self.setLastSync(Date.now());
+        self.onFinished();
         resolve();
       });
   }.bind(this));
@@ -127,6 +152,13 @@ App.prototype.setLastSync = function(value) {
   debug('set last sync: value', value);
   localStorage.lastSync = value;
 };
+
+App.prototype.onFinished = function() {
+  if (App.prototype.startedByAlarm) {
+    debug('closing app cause the app was open via alarm');
+    window.close();
+  }
+}
 
 App.prototype.processJobs = function() {
   return new Promise(function(resolve, reject) {
@@ -166,5 +198,9 @@ App.prototype.notify = function(jobs) {
   var notification = new Notification(length + ' ' + files +  ' uploaded', { body: body });
   debug('notify', notification);
 };
+
+navigator.mozSetMessageHandler("alarm", function (mozAlarm) {
+  App.prototype.startedByAlarm = true;
+});
 
 });

@@ -17,8 +17,16 @@
   "permissions": {
     "systemXHR": { "description": "Required to load remote content" },
     "device-storage:pictures": { "access": "readonly" },
-    "desktop-notification": {}
+    "desktop-notification": {},
+    "alarms": {
+      "description": "Required to check periodically for new files"
+    }
   },
+  "messages": [
+    {
+      "alarm": "/index.html"
+    }
+  ],
   "redirects": [
     {"from": "http://localhost/firefoxos-media-uploader",
      "to": "/js/services/dropbox/auth.html"},
